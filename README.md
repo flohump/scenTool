@@ -1,13 +1,7 @@
 # scenTool
 scenTool allows to explore and visualize time series of modelling results
 
-scenTool can read CSV files compatible with the Modelling Intercomparison Format (MIF).
-
-Exampel for CSV file in MIF format: 
-Model,Scenario,Region,Variable,Unit,2005,2050,2100
-Model1,Scen1,Region1,Variable1,Unit1,1,28,55
-Model1,Scen1,Region1,Variable2,Unit2,82,109,136
-Model1,Scen1,Region1,Variable3,Unit3,163,190,217
+scenTool can read CSV files compatible with the Modelling Intercomparison Format (MIF). See testdata.csv for an example.
 
 scenTool 0.1 has the following features:
 - read CSV/MIF files
