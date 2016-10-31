@@ -28,4 +28,4 @@ Ideas/future plans:
 - connect to database to retrieve data?
 
 Installation
-- download the bundle, open scenTool.R in RStudio and run the app
+- download the zip file, open scenTool.R in RStudio and run the app
