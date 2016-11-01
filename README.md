@@ -1,6 +1,9 @@
 # scenTool
 scenTool allows to explore and visualize time series of modelling results
 
+Want to try it out directly?
+https://florianh.shinyapps.io/scenTool
+
 scenTool can read CSV files compatible with the Modelling Intercomparison Format (MIF). See testdata.csv for an example.
 
 scenTool 0.1 has the following features:
@@ -23,4 +26,10 @@ Ideas/future plans:
 - add more statistical indicators
 - add uncertainty bands and error bars
 - connect to database to retrieve data?
+- add option to normalize data
+- add option for sorting data (currently data has the same order as in data file)
+- add option for scatter plot
+- add option for historical data
 
+Installation
+- download the zip file, open scenTool.R in RStudio and click on "Run app" (green play button)
