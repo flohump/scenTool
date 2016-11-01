@@ -2,8 +2,7 @@
 scenTool allows to explore and visualize time series of modelling results
 
 Want to try it out directly?
-
-https://florianh.shinyapps.io/scenTool/
+https://florianh.shinyapps.io/scenTool
 
 scenTool can read CSV files compatible with the Modelling Intercomparison Format (MIF). See testdata.csv for an example.
 
