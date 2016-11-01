@@ -7,33 +7,19 @@ library(data.table)
 #limit for file upload set to 300 MB
 options(shiny.maxRequestSize = 300*1024^2)
 
+file <- NULL
+
 #server function
-server <- function(input, output,session) {
-  #initialize reactive value
-  val <- reactiveValues(a = NULL,sel=NULL,title=NULL,ylab=NULL)
-  
-  #create dummy data for testing the tool
-  model <- factor(c("Model1","Model2","Model3"))
-  scenario <- factor(c("Scen1","Scen2","Scen3"))
-  region <- factor(c("Region1","Region2","Region3"))
-  year <- c(2005,2050,2100)
-  variable <- factor(c("Variable1 (Unit1)","Variable2 (Unit2)","Variable3 (Unit3)"))
-  long <- expand.grid(model,scenario,region,year,variable,1,KEEP.OUT.ATTRS = FALSE,stringsAsFactors = TRUE)
-  names(long) <- c("Model","Scenario","Region","Year","Variable","Value")
-  long$Value <- 1:length(long$Value)
-  val$a <- as.data.table(long)
-  
-  #Upload and read in data file if there is a change in input$datafile
-  observeEvent(input$datafile, {
-    print("read data")
-    inFile <- input$datafile
+server <- function(input,output,session,extFile=file) {
+  #function for reading data files
+  read.mif <- function(inFile) {
     if (is.null(inFile)) {
       return(NULL)
     } else {
-      s <- fread(inFile$datapath,sep=";",header=FALSE,nrows=1) 
+      s <- fread(inFile,sep=";",header=FALSE,nrows=1) 
       if (all(names(s) == "V1")) sep <- "," else sep <- ";"
       #fread is much faster than read.table
-      wide <- fread(inFile$datapath,sep=sep,header=TRUE,stringsAsFactors = TRUE,na.strings = "N/A",check.names = FALSE)
+      wide <- fread(inFile,sep=sep,header=TRUE,stringsAsFactors = TRUE,na.strings = "N/A",check.names = FALSE)
       #clean the data table
       del <- which(names(wide) == "")
       if (length(del) > 0) wide <- wide[,-del]
@@ -58,9 +44,34 @@ server <- function(input, output,session) {
       long$Year <- as.numeric(as.character(long$Year))
       #keep only complete cases
       long <- long[complete.cases(long),]
-      #assing to reactive value
-      val$a <- long
+      return(long)
     }
+  }
+
+  #initialize reactive value
+  val <- reactiveValues(a = NULL,sel=NULL,title=NULL,ylab=NULL)
+  
+  if(is.null(extFile)) {
+    #create dummy data for testing the tool
+    model <- factor(c("Model1","Model2","Model3"))
+    scenario <- factor(c("Scen1","Scen2","Scen3"))
+    region <- factor(c("Region1","Region2","Region3"))
+    year <- c(2005,2050,2100)
+    variable <- factor(c("Variable1 (Unit1)","Variable2 (Unit2)","Variable3 (Unit3)"))
+    long <- expand.grid(model,scenario,region,year,variable,1,KEEP.OUT.ATTRS = FALSE,stringsAsFactors = TRUE)
+    names(long) <- c("Model","Scenario","Region","Year","Variable","Value")
+    long$Value <- 1:length(long$Value)
+    val$a <- as.data.table(long)
+  } else val$a <- read.mif(extFile)
+
+  
+  
+  #Upload and read in data file if there is a change in input$datafile
+  observeEvent(input$datafile, {
+    print("read data")
+    #assing to reactive value
+    val$a <- read.mif(input$datafile$datapath)
+    
   })
 
   # observeEvent(c(input$model,input$scenario,input$region,input$year,input$variable),{
