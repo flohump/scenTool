@@ -26,6 +26,10 @@ Ideas/future plans:
 - add more statistical indicators
 - add uncertainty bands and error bars
 - connect to database to retrieve data?
+- add option to normalize data
+- add option for sorting data (currently data has the same order as in data file)
+- add option for scatter plot
+- add option for historical data
 
 Installation
-- download the zip file, open scenTool.R in RStudio and run the app
+- download the zip file, open scenTool.R in RStudio and click on "Run app" (green play button)
