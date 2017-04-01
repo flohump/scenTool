@@ -1,6 +1,7 @@
 library(ggplot2)
+#library(reshape)
 library(reshape2)
-library(plotly)
+#library(plotly)
 #using data tables is much faster than data frames
 library(data.table)
 
@@ -89,12 +90,15 @@ server <- function(input,output,session,extFile=file) {
     val$sel <- val$sel[Variable %in% input$variable, ]
   })
   
-  observeEvent(c(input$variable,input$stackshare),{
+  observeEvent(c(input$variable,input$stackshare,input$plottype,input$switchaxis),{
     if(length(input$variable) == 1) {
       val$title <- strsplit(input$variable[1]," \\(")[[1]][1]
       val$ylab <- strsplit(input$variable[1]," \\(")[[1]][2]
       val$ylab <- substr(val$ylab, 1, nchar(val$ylab)-1)
       if (input$stackshare) val$ylab <- "Share"
+    } else if (input$plottype == "scatter") {
+      val$title <- ""
+      if(input$switchaxis) val$ylab <- input$variable[2] else val$ylab <- input$variable[1]
     } else {
       val$title <- "Variable(s)"
       val$ylab <- "Unit"
@@ -129,15 +133,47 @@ server <- function(input,output,session,extFile=file) {
       breaks
     }
     
+    ggname <- function(x) {
+      if (class(x) != "character") {
+        return(x)
+      }
+      y <- sapply(x, function(s) {
+        if (!grepl("^`", s)) {
+          s <- paste("`", s, sep="", collapse="")
+        }
+        if (!grepl("`$", s)) {
+          s <- paste(s, "`", sep="", collapse="")
+        }
+      }
+      )
+      y 
+    }
+    
+    
     color <- input$color
       fill <- input$fill
       if(input$plottype == 'line') fill <- NULL
       if(input$plottype == 'bar' || input$plottype == 'area') color <- NULL
 #      if(input$normalize) norm <- input$normalizeYear else norm <- NULL
       sel <- val$sel
-      p <- ggplot(data=sel, aes(x=Year, y=Value)) + theme_minimal()
-      if(input$plottype == "line") {
-        p <- p + geom_line(aes_string(color=color)) + geom_point(aes_string(color=color))
+      if(input$plottype == 'scatter') {
+        sel <- reshape(sel, timevar = "Variable", idvar = names(sel)[!(names(sel) %in% c("Value", "Variable"))], direction = "wide")
+        names(sel) <- gsub("Value.", "", names(sel))
+        if(input$switchaxis) {
+          x_var <- input$variable[1]
+          y_var <- input$variable[2]
+        } else{
+          x_var <- input$variable[2]
+          y_var <- input$variable[1]
+        }
+        p <- ggplot(data=sel, aes_string(x=ggname(x_var), y=ggname(y_var))) + theme_minimal()
+      } else {
+        p <- ggplot(data=sel, aes(x=Year, y=Value)) + theme_minimal()
+      }
+      if(input$plottype == "scatter") {
+        p <- p + geom_line(aes_string(color=input$color_scatter,linetype=input$linetype_scatter)) + geom_point(aes_string(color=input$color_scatter))
+      } else if(input$plottype == "line") {
+        p <- p + geom_line(aes_string(color=color,linetype=input$linetype)) + geom_point(aes_string(color=color))
         p <- p + scale_x_continuous(breaks = myBreaks(sel$Year))
       } else if(input$plottype == "bar") {
         sel$Year <- as.factor(sel$Year)
@@ -178,14 +214,18 @@ server <- function(input,output,session,extFile=file) {
       
       p <- p + ylab(val$ylab) + ggtitle(val$title)
       p <- p + theme(axis.text.x = element_text(angle=90, vjust=0.5))
+#      p <- p + theme(axis.text = element_text(size = 20))
       
       return(p)
   })
   
-  output$plot <- renderPlotly({
-    layout(p = ggplotly(plot(),tooltip=c("y",if(input$plottype == "line") {"colour"} else {"fill"})),margin = list(b = 120,l = 180))
-  })
+  # output$plot <- renderPlotly({
+  #   layout(p = ggplotly(plot(),tooltip=c("y",if(input$plottype == "line") {"colour"} else {"fill"})),margin = list(b = 120,l = 180))
+  # })
   
+  output$plot <- renderPlot({
+    plot()},res = 120)#height = 400, width = 500
+
   output$summary <- renderPrint({
     summary(val$sel$Value)
   })
@@ -241,27 +281,34 @@ ui <- fluidPage(
                         mainPanel(
                           tabsetPanel(id = "main",type = "tabs",
                                       tabPanel("Plot", 
-                                               plotlyOutput("plot",height = "550px",width = "100%"),
+                                               # plotlyOutput("plot",height = "550px",width = "100%"),
+#                                               plotOutput("plot",height = "550px",width = "100%"),
+                                               plotOutput("plot",width = "100%"),
                                                wellPanel(
                                                  fluidRow(
                                                    column(2,
-                                                          radioButtons("plottype", "Plot Type", c("line","bar","area"), selected = "line", inline = F),
+                                                          radioButtons("plottype", "Plot Type", c("line","bar","area","scatter"), selected = "line", inline = F),
                                                           #                                                      checkboxInput('normalize', 'Normalize', value = FALSE, width = NULL),
                                                           #                                                      conditionalPanel(condition = "input.normalize == true", selectInput('normalizeYear', 'Year', "Pending upload",multiple = FALSE)),
                                                           conditionalPanel(condition = "input.plottype == 'bar' || input.plottype == 'area'", checkboxInput('stack', 'Stack', value = FALSE, width = NULL)),
-                                                          conditionalPanel(condition = "input.stack == true", checkboxInput('stackshare', 'Share', value = FALSE, width = NULL))
+                                                          conditionalPanel(condition = "input.stack == true", checkboxInput('stackshare', 'Share', value = FALSE, width = NULL)),
+                                                          conditionalPanel(condition = "input.plottype == 'scatter'", checkboxInput('switchaxis', 'Switch Axis', value = FALSE, width = NULL))
                                                    ),
                                                    column(2,
                                                           conditionalPanel(condition = "input.plottype == 'line'",
                                                                            radioButtons('color', 'Color', c("Model","Scenario","Region","Variable"),selected = "Model",inline = F)),
                                                           conditionalPanel(condition = "input.plottype == 'bar' || input.plottype == 'area'",
-                                                                           radioButtons('fill', 'Color', c("Model","Scenario","Region","Variable"),selected = "Model",inline = F))
+                                                                           radioButtons('fill', 'Fill', c("Model","Scenario","Region","Variable"),selected = "Model",inline = F)),
+                                                          conditionalPanel(condition = "input.plottype == 'scatter'",
+                                                                           radioButtons('color_scatter', 'Color', c("Model","Scenario","Region","Year"),selected = "Model",inline = F))
+                                                          
                                                    ),
-                                                   # column(2,
-                                                   #        checkboxGroupInput('group', 'Group', c("Model","Scenario","Region","Variable"),selected = NULL)
-                                                   # ),
                                                    column(2,
-                                                          checkboxGroupInput('facet_x', 'Horizontal', c("Model","Scenario","Region","Variable"),selected = "Scenario"),
+                                                          conditionalPanel(condition = "input.plottype == 'line'", radioButtons('linetype', 'Line Type', c("Model","Scenario","Region","Variable"),selected = "Scenario",inline = F)),
+                                                          conditionalPanel(condition = "input.plottype == 'scatter'", radioButtons('linetype_scatter', 'Line Type', c("Model","Scenario","Region","Year"),selected = "Scenario",inline = F))
+                                                   ),
+                                                   column(2,
+                                                          checkboxGroupInput('facet_x', 'Horizontal', c("Model","Scenario","Region","Variable"),selected = NULL),
                                                           conditionalPanel(condition = 'input.facet_x[0] != null & input.facet_y[0] == null', numericInput('ncol', 'Columns', value = 5, min = 1, max = 10,step = 1, width = NULL))
                                                    ),
                                                    column(2,
